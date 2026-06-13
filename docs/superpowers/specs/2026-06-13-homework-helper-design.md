@@ -46,7 +46,7 @@ auth); it identifies *who* is using the app, not a security boundary.
 | Input | Photo (hero) + type | Voice input cut for v1 |
 | Pre-tutoring | "Did we read it right?" correction (edit text or retake) | Bad OCR shouldn't poison tutoring |
 | Hint reveal | Accumulate, one tap at a time; hint 3 second-confirm gated | Re-readable build-up; prevents skipping to the example |
-| Pedagogy | Concrete, **example-driven** hints; never the answer | Abstract rules ("factor the quadratic") confuse |
+| Pedagogy | Concrete, **example-driven** hints that withhold the answer; a final **gated "show me" reveals the full solution** to their actual question | Productive struggle first, but don't leave a genuinely stuck kid frustrated |
 | Read-aloud | Yes — browser `SpeechSynthesis` on hints/feedback | Free; lets Zane (8) work solo; helps all |
 | Access | Cloudflare Tunnel (public HTTPS) via existing `cloudflared` | Works anywhere; HTTPS needed for camera |
 | Auth | None (secret URL) + **server-side daily request cap** | User's call; cap is the credit-abuse backstop |
@@ -68,7 +68,10 @@ auth); it identifies *who* is using the app, not a security boundary.
    ✅ correct · 🟡 partial · ⭕ unanswered · ❌ incorrect. Overall encouragement at top.
 5. **Question detail** — tap a non-correct card → hints **accumulate** one tap at a
    time (earlier hints stay visible). Hint 3 (worked example) is gated behind a
-   second explicit confirmation. 🔊 read-aloud on each hint and on feedback.
+   second explicit confirmation. After all 3 hints, a final **"Still stuck? Show me
+   how to solve this one"** button — itself gated behind an explicit confirm —
+   reveals the **full worked solution to their actual question, answer included**.
+   🔊 read-aloud on each hint, the solution, and feedback.
 6. **History** — per-kid list of past submissions, text only.
 
 UI text size and word-simplicity scale automatically from the kid's `level` — no setting.
@@ -77,19 +80,24 @@ UI text size and word-simplicity scale automatically from the kid's `level` — 
 
 ### System prompt hard constraints (`prompts.ts`)
 
-1. **Golden rule:** never state the answer to a question the kid got wrong or left
-   blank. No final numeric/textual answer, no "the answer is…".
-2. Classify each item: `correct | partial | incorrect | unanswered`.
-3. For every non-correct item, produce **exactly 3 progressive hints**:
+1. **Golden rule (in hints):** the **hints** never state the answer to a question the
+   kid got wrong or left blank — no final numeric/textual answer, no "the answer is…".
+   Hints lead the kid to it; they don't hand it over.
+2. **Escape hatch:** separately produce a `solution` — a full, step-by-step worked
+   solution **of the kid's actual question, answer included**. The UI keeps it hidden
+   behind all 3 hints + an explicit confirm, so it's a deliberate last resort, not the
+   default. (Softens the old hard "never reveal" rule: don't leave a stuck kid lost.)
+3. Classify each item: `correct | partial | incorrect | unanswered`.
+4. For every non-correct item, produce **exactly 3 progressive hints**:
    - level 1 `nudge` — a gentle question that points attention.
    - level 2 `concept` — the rule/method, **carrying a short concrete example**.
    - level 3 `worked_example` — a *fully solved* example on **different, and where
      helpful simpler, numbers/wording** than the kid's actual question.
-4. **Concrete over abstract** — every hint should show via example, not lecture.
+5. **Concrete over abstract** — every hint should show via example, not lecture.
    Calibrate to the kid's `level`/`age` (e.g. count-on for Zane; factoring for Jai).
-5. Correct items: praise, **zero hints**.
-6. Warm, encouraging, age-appropriate. Subjects: maths & English.
-7. Output **only** the JSON object below — no prose around it.
+6. Correct items: praise, **zero hints**, `solution` null.
+7. Warm, encouraging, age-appropriate. Subjects: maths & English.
+8. Output **only** the JSON object below — no prose around it.
 
 ### Result contract (`types.ts`)
 
@@ -110,6 +118,9 @@ interface TutorItem {
   status: Status;
   feedback: string;            // short, always present
   hints: Hint[];               // [] iff status === "correct", else exactly 3
+  solution: string | null;     // full worked solution of THIS question, answer
+                               // included; null iff correct. UI gates it behind
+                               // all 3 hints + an explicit confirm (escape hatch).
 }
 
 interface TutorResult {
@@ -122,11 +133,14 @@ interface TutorResult {
 ### `claude.ts` validation (zod) — enforced invariants
 
 - Top-level shape matches `TutorResult`; unknown keys rejected.
-- `status === "correct"` ⇒ `hints.length === 0`.
+- `status === "correct"` ⇒ `hints.length === 0` **and** `solution === null`.
 - `status !== "correct"` ⇒ `hints.length === 3`, levels exactly `[1,2,3]` in order,
-  types exactly `[nudge, concept, worked_example]`.
-- **Answer-leak heuristic:** if `studentAnswer` (or the derived correct answer) is
-  numeric, the level-3 text must not contain that exact value as a standalone token.
+  types exactly `[nudge, concept, worked_example]`, **and** `solution` is a non-empty
+  string.
+- **Answer-leak heuristic (hints only):** if `studentAnswer` (or the derived correct
+  answer) is numeric, the **hint** text — especially level 3 — must not contain that
+  exact value as a standalone token. **The `solution` field is exempt** — it's the
+  escape hatch and is *meant* to contain the answer; the UI gating is its safeguard.
 - On parse failure or invalid output: **one retry**, then a structured error the UI
   renders as a friendly "couldn't read that — try again".
 
@@ -245,9 +259,11 @@ Status badge colors: green correct, amber partial, terracotta incorrect/blank.
 ## Testing (TDD — value-first; SDK mocked, no real credits)
 
 Backend:
-- Correct answer → praise, **zero** hints. *(validator)*
-- Wrong answer → **exactly three** hints, nudge→concept→worked-example. *(validator)*
-- Worked example does not reuse the kid's numeric answer. *(answer-leak)*
+- Correct answer → praise, **zero** hints, **`solution` null**. *(validator)*
+- Wrong answer → **exactly three** hints, nudge→concept→worked-example, **plus a
+  non-empty `solution`**. *(validator)*
+- Hint text does not reuse the kid's numeric answer; the **`solution` field is allowed
+  to**. *(answer-leak guard scoped to hints)*
 - Malformed model output → one retry → friendly structured error, never a crash.
 - `prompts.ts` injects the kid's `level`/`age` and the golden-rule system prompt.
 - Typed-text submission works without an image block.
@@ -257,7 +273,9 @@ Backend:
 
 Frontend (light — Vitest + Testing Library):
 - ProblemDetail reveals hints one tap at a time; hint 3 hidden until second confirm.
-- A correct item shows no "reveal hint" affordance.
+- The "Show me how to solve this one" solution stays hidden until all 3 hints are
+  revealed AND an explicit confirm; only then does it show the answer.
+- A correct item shows no "reveal hint" affordance and no solution button.
 - Confirm screen lets the user edit the transcription before submitting.
 - Read-aloud button invokes the speech wrapper.
 
