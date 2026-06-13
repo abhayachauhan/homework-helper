@@ -12,6 +12,11 @@ describe("buildSystemPrompt", () => {
     expect(p).toContain("Grade 2");
     expect(p).toContain("8");
   });
+  it("instructs simple, age-appropriate language the kid can read themselves", () => {
+    const p = buildSystemPrompt(zane).toLowerCase();
+    expect(p).toMatch(/simple|easily (read|understand)|reading level/);
+    expect(p).toMatch(/short sentences|everyday words|avoid jargon/);
+  });
   it("states the golden rule, the 3-hint structure, and the solution escape hatch", () => {
     const p = buildSystemPrompt(jai);
     expect(p.toLowerCase()).toMatch(/never (state|give|reveal).*answer/);
