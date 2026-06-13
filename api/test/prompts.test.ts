@@ -31,6 +31,12 @@ describe("buildSystemPrompt", () => {
     expect(p).toMatch(/"level".*"type".*"text"/);
     expect(p).toMatch(/"text"/);
   });
+  it("requires the 3 hints to be a connected step-by-step chain on the actual question, flagging multi-step", () => {
+    const p = buildSystemPrompt(jai).toLowerCase();
+    expect(p).toMatch(/connected chain|continues from|same solution path/);
+    expect(p).toMatch(/first step|multiple steps|step 1/);
+    expect(p).toMatch(/actual question/);
+  });
 });
 
 describe("buildUserInstruction", () => {
