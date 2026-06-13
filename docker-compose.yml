@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    image: homework-helper:latest
+    container_name: homework-helper
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      HH_DB_PATH: "/app/data/homework.db"
+      HH_DAILY_CAP: "${HH_DAILY_CAP:-50}"
+      # NOTE: ANTHROPIC_API_KEY is deliberately NEVER set — billing must route to the
+      # Max subscription via the Agent SDK; the app's startup guard refuses to boot if
+      # it sees this var.
+    volumes:
+      - claude-auth:/home/node/.claude   # persists `claude login` across rebuilds
+      - ./data:/app/data                 # SQLite (host-owned)
+
+volumes:
+  claude-auth:

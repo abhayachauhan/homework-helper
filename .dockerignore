@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+data
+.git
+.superpowers
+*.log
+*.tsbuildinfo
+docs
+pm
+.env
+.env.*
