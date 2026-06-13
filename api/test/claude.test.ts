@@ -39,4 +39,13 @@ describe("tutor", () => {
     await expect(tutor({ kind: "text", profileId: "ghost", text: "2+2" }, run)).rejects.toThrow(/profile/);
     expect(run).not.toHaveBeenCalled();
   });
+
+  it("propagates a runner/subprocess failure immediately without retrying", async () => {
+    // Reproduces the deployed crash: the Agent SDK subprocess exited ("Claude Code
+    // process exited with code 1"). The error must surface so the route returns a
+    // clean 502 — and must NOT be retried (it isn't a validation error).
+    const run = vi.fn().mockRejectedValue(new Error("Claude Code process exited with code 1"));
+    await expect(tutor({ kind: "text", profileId: "jai", text: "2+2" }, run)).rejects.toThrow(/exited with code 1/);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
 });
