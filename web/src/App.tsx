@@ -17,13 +17,15 @@ export default function App() {
   const [itemIndex, setItemIndex] = useState(0);
   const [history, setHistory] = useState<SubmissionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     api.getProfiles().then(setProfiles).catch((e) => setError(e.message));
   }, []);
 
   async function submit(payload: CapturePayload) {
-    if (!profile) return;
+    if (!profile || submitting) return;
+    setSubmitting(true);
     setScreen("loading");
     setError(null);
     try {
@@ -36,6 +38,8 @@ export default function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setScreen("capture");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -46,9 +50,14 @@ export default function App() {
   }
 
   async function openHistoryItem(id: string) {
-    const sub = await api.getSubmission(id);
-    setResult(sub.result);
-    setScreen("results");
+    setError(null);
+    try {
+      const sub = await api.getSubmission(id);
+      setResult(sub.result);
+      setScreen("results");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't open that one");
+    }
   }
 
   return (
@@ -64,7 +73,7 @@ export default function App() {
 
       {screen === "capture" && profile && (
         <>
-          <Capture profile={profile} busy={false} onSubmit={submit} />
+          <Capture profile={profile} busy={submitting} onSubmit={submit} />
           <button className="btn-ghost" type="button" onClick={openHistory}>Past homework →</button>
           <button className="btn-ghost" type="button" onClick={() => { setProfile(null); setScreen("pick"); }}>
             ← Switch kid
