@@ -6,6 +6,7 @@ import { Capture, type CapturePayload } from "./components/Capture.js";
 import { Results } from "./components/Results.js";
 import { ProblemDetail } from "./components/ProblemDetail.js";
 import { History } from "./components/History.js";
+import { Loading } from "./components/Loading.js";
 
 type Screen = "pick" | "capture" | "loading" | "results" | "detail" | "history";
 
@@ -81,7 +82,7 @@ export default function App() {
         </>
       )}
 
-      {screen === "loading" && <div className="spinner">Reading your homework… ✏️</div>}
+      {screen === "loading" && <Loading />}
 
       {screen === "results" && result && (
         <Results
