@@ -7,6 +7,7 @@ import { Results } from "./components/Results.js";
 import { ProblemDetail } from "./components/ProblemDetail.js";
 import { History } from "./components/History.js";
 import { Loading } from "./components/Loading.js";
+import { PinGate } from "./components/PinGate.js";
 
 type Screen = "pick" | "capture" | "loading" | "results" | "detail" | "history";
 
@@ -19,9 +20,13 @@ export default function App() {
   const [history, setHistory] = useState<SubmissionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     api.getProfiles().then(setProfiles).catch((e) => setError(e.message));
+    api.getConfig().then((c) => {
+      if (c.pinRequired && !localStorage.getItem("hh_pin")) setLocked(true);
+    }).catch(() => {});
   }, []);
 
   async function submit(payload: CapturePayload) {
@@ -37,6 +42,12 @@ export default function App() {
       setResult(res.result);
       setScreen("results");
     } catch (e) {
+      if (e instanceof api.ApiError && e.status === 401) {
+        localStorage.removeItem("hh_pin");
+        setLocked(true);
+        setScreen("capture");
+        return;
+      }
       setError(e instanceof Error ? e.message : "Something went wrong");
       setScreen("capture");
     } finally {
@@ -59,6 +70,14 @@ export default function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't open that one");
     }
+  }
+
+  if (locked) {
+    return (
+      <div className="app">
+        <PinGate onUnlock={() => setLocked(false)} />
+      </div>
+    );
   }
 
   return (

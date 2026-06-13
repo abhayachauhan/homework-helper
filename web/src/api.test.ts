@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getProfiles, submitText, submitImage, getHistory, ApiError } from "./api.js";
+import { getProfiles, submitText, submitImage, getHistory, ApiError, checkPin, getConfig } from "./api.js";
 
 function mockFetch(status: number, body: unknown) {
   return vi.fn().mockResolvedValue({
@@ -9,7 +9,7 @@ function mockFetch(status: number, body: unknown) {
   } as Response);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 
 describe("api client", () => {
   it("getProfiles returns the parsed list", async () => {
@@ -52,5 +52,40 @@ describe("api client", () => {
     vi.stubGlobal("fetch", mockFetch(429, { message: "enough for today" }));
     await expect(submitText("jai", "x")).rejects.toMatchObject({ status: 429, message: "enough for today" });
     await expect(submitText("jai", "x")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("submitText includes x-hh-pin header when pin is stored in localStorage", async () => {
+    localStorage.setItem("hh_pin", "1234");
+    const f = mockFetch(200, { id: "s1", result: { subject: "maths", summary: "ok", items: [] } });
+    vi.stubGlobal("fetch", f);
+    await submitText("jai", "2+2");
+    const [, init] = f.mock.calls[0];
+    expect(init.headers["x-hh-pin"]).toBe("1234");
+  });
+
+  it("submitText omits x-hh-pin header when no pin is stored", async () => {
+    const f = mockFetch(200, { id: "s1", result: { subject: "maths", summary: "ok", items: [] } });
+    vi.stubGlobal("fetch", f);
+    await submitText("jai", "2+2");
+    const [, init] = f.mock.calls[0];
+    expect(init.headers["x-hh-pin"]).toBeUndefined();
+  });
+
+  it("checkPin returns true when the server responds ok", async () => {
+    vi.stubGlobal("fetch", mockFetch(200, { ok: true }));
+    const result = await checkPin("1234");
+    expect(result).toBe(true);
+  });
+
+  it("checkPin returns false when the server responds with 401", async () => {
+    vi.stubGlobal("fetch", mockFetch(401, { ok: false, message: "Wrong PIN" }));
+    const result = await checkPin("9999");
+    expect(result).toBe(false);
+  });
+
+  it("getConfig returns the parsed pinRequired value", async () => {
+    vi.stubGlobal("fetch", mockFetch(200, { pinRequired: true }));
+    const config = await getConfig();
+    expect(config).toEqual({ pinRequired: true });
   });
 });

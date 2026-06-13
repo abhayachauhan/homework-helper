@@ -8,6 +8,8 @@ vi.mock("./api.js", () => ({
     { id: "jai", name: "Jai", level: "Year 9", age: 14 },
     { id: "zane", name: "Zane", level: "Grade 2", age: 8 },
   ]),
+  getConfig: vi.fn().mockResolvedValue({ pinRequired: false }),
+  checkPin: vi.fn(),
   submitText: vi.fn().mockResolvedValue({
     id: "s1",
     result: {
