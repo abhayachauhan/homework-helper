@@ -26,6 +26,11 @@ describe("buildSystemPrompt", () => {
     expect(p.toLowerCase()).toContain("solution");
     expect(p.toLowerCase()).toContain("json");
   });
+  it("specifies the hint object shape with a 'text' field (not 'hint')", () => {
+    const p = buildSystemPrompt(jai);
+    expect(p).toMatch(/"level".*"type".*"text"/);
+    expect(p).toMatch(/"text"/);
+  });
 });
 
 describe("buildUserInstruction", () => {
