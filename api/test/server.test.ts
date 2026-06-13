@@ -1,8 +1,18 @@
 import { describe, it, expect } from "vitest";
+import sharp from "sharp";
 import { buildServer } from "../src/index.js";
 import { assertNoApiKey } from "../src/startup.js";
 import { openDb } from "../src/db.js";
 import type { TutorResult } from "../src/types.js";
+
+async function multipartImage(boundary: string): Promise<Buffer> {
+  const png = await sharp({ create: { width: 12, height: 12, channels: 3, background: "#fff" } }).png().toBuffer();
+  return Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="hw.png"\r\nContent-Type: image/png\r\n\r\n`),
+    png,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+}
 
 const result: TutorResult = {
   subject: "maths", summary: "Good",
@@ -76,5 +86,49 @@ describe("routes", () => {
     expect(got.json().result.summary).toBe("Good");
     const missing = await app.inject({ method: "GET", url: "/api/submission/nope" });
     expect(missing.statusCode).toBe(404);
+  });
+});
+
+describe("multipart submit", () => {
+  it("reads profileId from the query string, tutors the image, and persists", async () => {
+    const { app, calls } = makeServer();
+    const boundary = "----hhtest";
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit?profileId=jai",
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      payload: await multipartImage(boundary),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result.items).toHaveLength(1);
+    expect((calls[0] as { kind: string }).kind).toBe("image");
+  });
+
+  it("returns 400 for an unknown profileId in the query (before reading the file)", async () => {
+    const { app } = makeServer();
+    const boundary = "----hhtest2";
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit?profileId=ghost",
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      payload: await multipartImage(boundary),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 'no image' when a multipart body carries no file part", async () => {
+    const { app } = makeServer();
+    const boundary = "----hhtest3";
+    const bodyNoFile = Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="note"\r\n\r\nhi\r\n--${boundary}--\r\n`
+    );
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit?profileId=jai",
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      payload: bodyNoFile,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/no image/i);
   });
 });

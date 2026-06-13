@@ -50,11 +50,12 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 
     let input: TutorInput;
     if (req.isMultipart()) {
+      // profileId comes from the query string (NOT a form field) so it is immune to
+      // multipart field-ordering: the image is the only part in the body.
+      const profileId = (req.query as { profileId?: string }).profileId ?? "";
+      if (!getProfile(profileId)) return reply.code(400).send({ message: "unknown profileId" });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- @fastify/multipart augments req at runtime; no stable generic available
       const file = await (req as any).file();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- field values are untyped in multipart
-      const profileId = (file?.fields?.profileId?.value as string) ?? "";
-      if (!getProfile(profileId)) return reply.code(400).send({ message: "unknown profileId" });
       if (!file) return reply.code(400).send({ message: "no image" });
       const buf = await file.toBuffer();
       const { base64, mediaType } = await resizeToBase64(buf);
