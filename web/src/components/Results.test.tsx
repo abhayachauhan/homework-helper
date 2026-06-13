@@ -20,22 +20,29 @@ const result: TutorResult = {
 
 describe("Results", () => {
   it("shows the summary and one card per question", () => {
-    render(<Results result={result} onOpen={vi.fn()} onRetake={vi.fn()} />);
+    render(<Results result={result} onOpen={vi.fn()} onRetake={vi.fn()} onNew={vi.fn()} />);
     expect(screen.getByText("Nice work!")).toBeInTheDocument();
     expect(screen.getByText(/5\/6-1\/3/)).toBeInTheDocument();
   });
 
   it("opens an item when its card is tapped", async () => {
     const onOpen = vi.fn();
-    render(<Results result={result} onOpen={onOpen} onRetake={vi.fn()} />);
+    render(<Results result={result} onOpen={onOpen} onRetake={vi.fn()} onNew={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /5\/6-1\/3/ }));
     expect(onOpen).toHaveBeenCalledWith(1);
   });
 
   it("offers a retake/redo control", async () => {
     const onRetake = vi.fn();
-    render(<Results result={result} onOpen={vi.fn()} onRetake={onRetake} />);
+    render(<Results result={result} onOpen={vi.fn()} onRetake={onRetake} onNew={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /something look wrong|retake|redo/i }));
     expect(onRetake).toHaveBeenCalled();
+  });
+
+  it("offers a 'start a new question' button", async () => {
+    const onNew = vi.fn();
+    render(<Results result={result} onOpen={vi.fn()} onRetake={vi.fn()} onNew={onNew} />);
+    await userEvent.click(screen.getByRole("button", { name: /new question/i }));
+    expect(onNew).toHaveBeenCalled();
   });
 });

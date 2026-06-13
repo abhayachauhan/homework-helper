@@ -5,10 +5,12 @@ export function Results({
   result,
   onOpen,
   onRetake,
+  onNew,
 }: {
   result: TutorResult;
   onOpen: (index: number) => void;
   onRetake: () => void;
+  onNew: () => void;
 }) {
   const toRevisit = result.items.filter((i) => i.status !== "correct").length;
   return (
@@ -31,6 +33,9 @@ export function Results({
         </button>
       ))}
 
+      <button className="btn-primary" type="button" onClick={onNew} style={{ marginTop: 8 }}>
+        📸 Start a new question
+      </button>
       <button className="btn-ghost" type="button" onClick={onRetake}>
         Something look wrong? Retake / re-type
       </button>

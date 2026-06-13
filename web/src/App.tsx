@@ -88,11 +88,16 @@ export default function App() {
           result={result}
           onOpen={(i) => { setItemIndex(i); setScreen("detail"); }}
           onRetake={() => setScreen("capture")}
+          onNew={() => { setResult(null); setScreen("capture"); }}
         />
       )}
 
       {screen === "detail" && result && (
-        <ProblemDetail item={result.items[itemIndex]} onBack={() => setScreen("results")} />
+        <ProblemDetail
+          item={result.items[itemIndex]}
+          onBack={() => setScreen("results")}
+          onNew={() => { setResult(null); setScreen("capture"); }}
+        />
       )}
 
       {screen === "history" && (

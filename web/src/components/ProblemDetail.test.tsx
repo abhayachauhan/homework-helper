@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe("ProblemDetail — correct item", () => {
   it("shows praise and offers no hints or solution", () => {
-    render(<ProblemDetail item={correct} onBack={vi.fn()} />);
+    render(<ProblemDetail item={correct} onBack={vi.fn()} onNew={vi.fn()} />);
     expect(screen.getByText("Spot on!")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /hint/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /solve this one/i })).not.toBeInTheDocument();
@@ -34,15 +34,22 @@ describe("ProblemDetail — correct item", () => {
 
   it("never shows a solution for a correct item, even if one is wrongly present", () => {
     const correctWithSolution = { ...correct, solution: "the answer is 4" };
-    render(<ProblemDetail item={correctWithSolution} onBack={vi.fn()} />);
+    render(<ProblemDetail item={correctWithSolution} onBack={vi.fn()} onNew={vi.fn()} />);
     expect(screen.queryByText(/the answer is 4/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /solve this one/i })).not.toBeInTheDocument();
+  });
+
+  it("offers a 'start a new question' button", async () => {
+    const onNew = vi.fn();
+    render(<ProblemDetail item={correct} onBack={vi.fn()} onNew={onNew} />);
+    await userEvent.click(screen.getByRole("button", { name: /new question/i }));
+    expect(onNew).toHaveBeenCalled();
   });
 });
 
 describe("ProblemDetail — wrong item", () => {
   it("reveals hints one at a time and gates the worked example + solution", async () => {
-    render(<ProblemDetail item={wrong} onBack={vi.fn()} />);
+    render(<ProblemDetail item={wrong} onBack={vi.fn()} onNew={vi.fn()} />);
 
     // No hint text shown initially.
     expect(screen.queryByText(/subtract sixths/i)).not.toBeInTheDocument();

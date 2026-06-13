@@ -4,7 +4,7 @@ import { ReadAloudButton } from "./ReadAloudButton.js";
 
 const HINT_LABEL = ["Hint 1 · Nudge", "Hint 2 · Concept", "Hint 3 · Worked example"];
 
-export function ProblemDetail({ item, onBack }: { item: TutorItem; onBack: () => void }) {
+export function ProblemDetail({ item, onBack, onNew }: { item: TutorItem; onBack: () => void; onNew: () => void }) {
   const [revealed, setRevealed] = useState(0); // number of hints shown (0..3)
   const [confirmingExample, setConfirmingExample] = useState(false);
   const [confirmingSolution, setConfirmingSolution] = useState(false);
@@ -99,6 +99,10 @@ export function ProblemDetail({ item, onBack }: { item: TutorItem; onBack: () =>
           )}
         </>
       )}
+
+      <button className="btn-primary" type="button" onClick={onNew} style={{ marginTop: 8 }}>
+        📸 Start a new question
+      </button>
     </div>
   );
 }
