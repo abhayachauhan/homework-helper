@@ -48,42 +48,18 @@ describe("parseTutorResult", () => {
     expect(() => parseTutorResult(noSol)).toThrow(/must have a solution/);
   });
 
-  it("rejects a worked example that leaks the student's numeric answer", () => {
-    const leak = {
+  it("accepts a solution and hints that contain numbers (no programmatic leak check)", () => {
+    // The student's (often wrong) answer recurring in counting/working is fine; only
+    // the prompt enforces not stating the CORRECT answer in hints.
+    const counting = {
       ...base,
-      items: [{ ...wrongItem, studentAnswer: "1/2",
-        hints: [wrongHints[0], wrongHints[1],
-          { level: 3, type: "worked_example", text: "The result is 1/2 here." }] }],
-    };
-    expect(() => parseTutorResult(leak)).toThrow(/leaks/);
-  });
-
-  it("allows the solution field to contain the answer", () => {
-    expect(() => parseTutorResult(base)).not.toThrow();
-  });
-
-  it("does not leak-check a worded (non-numeric) answer that recurs in a hint", () => {
-    const english = {
-      ...base,
-      items: [{ ...wrongItem, studentAnswer: "dog", solution: "noun",
+      items: [{ ...wrongItem, studentAnswer: "8", solution: "12 - 5 = 7",
         hints: [
-          { level: 1, type: "nudge", text: "Is 'dog' a naming word?" },
-          { level: 2, type: "concept", text: "A noun names a thing, like 'cat'." },
-          { level: 3, type: "worked_example", text: "In 'The dog ran', 'dog' is the noun." },
+          { level: 1, type: "nudge", text: "Count back from 12 on your fingers." },
+          { level: 2, type: "concept", text: "Count back 5: 11, 10, 9, 8, 7." },
+          { level: 3, type: "worked_example", text: "10 - 4: count back 9, 8, 7, 6, so 6." },
         ] }],
     };
-    expect(() => parseTutorResult(english)).not.toThrow();
-  });
-
-  it("catches a numeric answer leaked in an earlier hint, not only level 3", () => {
-    const leakEarly = {
-      ...base,
-      items: [{ ...wrongItem, studentAnswer: "7", solution: "7",
-        hints: [
-          { level: 1, type: "nudge", text: "The answer is 7, can you see why?" },
-          wrongHints[1], wrongHints[2],
-        ] }],
-    };
-    expect(() => parseTutorResult(leakEarly)).toThrow(/leaks/);
+    expect(() => parseTutorResult(counting)).not.toThrow();
   });
 });

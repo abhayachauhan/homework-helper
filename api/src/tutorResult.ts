@@ -35,23 +35,6 @@ export class TutorValidationError extends Error {
     this.name = "TutorValidationError";
   }
 }
-
-// Only numeric/fraction answers are leak-checked (per spec). A worded answer like
-// "dog" legitimately recurring in a different worked example must NOT be treated as
-// a leak — that would wrongly reject valid English-homework feedback.
-function isNumericAnswer(answer: string): boolean {
-  const a = answer.trim();
-  return /\d/.test(a) && /^[\d\s.,/\-+()]+$/.test(a);
-}
-
-function leaksAnswer(answer: string, text: string): boolean {
-  // Check the full answer appears as a standalone token — not adjacent to a word
-  // char or dot that would make it part of a different number/word/fraction.
-  const escaped = answer.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const standalone = new RegExp(`(?<![\\w.])${escaped}(?![\\w.])`);
-  return standalone.test(text);
-}
-
 export function parseTutorResult(raw: unknown): TutorResult {
   const parsed = resultSchema.safeParse(raw);
   if (!parsed.success) throw new TutorValidationError(parsed.error.message);
@@ -74,12 +57,10 @@ export function parseTutorResult(raw: unknown): TutorResult {
       throw new TutorValidationError(`item ${item.id}: hint types out of order`);
     if (!item.solution)
       throw new TutorValidationError(`item ${item.id}: non-correct items must have a solution`);
-    if (item.studentAnswer && isNumericAnswer(item.studentAnswer)) {
-      // Guard every hint (especially the level-3 worked example) from leaking a
-      // numeric answer.
-      if (item.hints.some((h) => leaksAnswer(item.studentAnswer as string, h.text)))
-        throw new TutorValidationError(`item ${item.id}: a hint leaks the student's answer`);
-    }
+    // NOTE: no programmatic "answer-leak" check. It was scoped to the student's
+    // (often wrong) answer, which harmlessly recurs in counting/working (e.g. "8" in
+    // "11, 10, 9, 8, 7"), causing false rejections with no benefit. The golden rule —
+    // hints must not state the CORRECT answer — is enforced by the prompt.
   }
 
   return parsed.data as TutorResult;
