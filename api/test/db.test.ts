@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { openDb, saveSubmission, listHistory, getSubmission, bumpDailyCount, getDailyCount } from "../src/db.js";
 import type { TutorResult } from "../src/types.js";
 
@@ -16,6 +19,19 @@ const result: TutorResult = {
 };
 
 function db() { return openDb(":memory:"); }
+
+describe("openDb", () => {
+  it("creates the parent directory for a file-backed db path", () => {
+    const base = join(tmpdir(), `hh-db-test-${process.pid}-${Date.now()}`);
+    try {
+      const d = openDb(join(base, "nested", "homework.db")); // dir does not exist yet
+      saveSubmission(d, "jai", result, new Date("2026-06-13T10:00:00Z"));
+      expect(listHistory(d, "jai")).toHaveLength(1);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("submissions", () => {
   it("saves and reads back a full submission", () => {
