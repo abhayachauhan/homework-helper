@@ -31,6 +31,13 @@ describe("ProblemDetail — correct item", () => {
     expect(screen.queryByRole("button", { name: /hint/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /solve this one/i })).not.toBeInTheDocument();
   });
+
+  it("never shows a solution for a correct item, even if one is wrongly present", () => {
+    const correctWithSolution = { ...correct, solution: "the answer is 4" };
+    render(<ProblemDetail item={correctWithSolution} onBack={vi.fn()} />);
+    expect(screen.queryByText(/the answer is 4/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /solve this one/i })).not.toBeInTheDocument();
+  });
 });
 
 describe("ProblemDetail — wrong item", () => {
