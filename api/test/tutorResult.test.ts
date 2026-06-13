@@ -61,4 +61,29 @@ describe("parseTutorResult", () => {
   it("allows the solution field to contain the answer", () => {
     expect(() => parseTutorResult(base)).not.toThrow();
   });
+
+  it("does not leak-check a worded (non-numeric) answer that recurs in a hint", () => {
+    const english = {
+      ...base,
+      items: [{ ...wrongItem, studentAnswer: "dog", solution: "noun",
+        hints: [
+          { level: 1, type: "nudge", text: "Is 'dog' a naming word?" },
+          { level: 2, type: "concept", text: "A noun names a thing, like 'cat'." },
+          { level: 3, type: "worked_example", text: "In 'The dog ran', 'dog' is the noun." },
+        ] }],
+    };
+    expect(() => parseTutorResult(english)).not.toThrow();
+  });
+
+  it("catches a numeric answer leaked in an earlier hint, not only level 3", () => {
+    const leakEarly = {
+      ...base,
+      items: [{ ...wrongItem, studentAnswer: "7", solution: "7",
+        hints: [
+          { level: 1, type: "nudge", text: "The answer is 7, can you see why?" },
+          wrongHints[1], wrongHints[2],
+        ] }],
+    };
+    expect(() => parseTutorResult(leakEarly)).toThrow(/leaks/);
+  });
 });
