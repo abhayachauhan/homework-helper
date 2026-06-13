@@ -3,7 +3,7 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { PROFILES, getProfile, DAILY_SUBMISSION_CAP, DB_PATH } from "./config.js";
+import { PROFILES, getProfile, DAILY_SUBMISSION_CAP, DB_PATH, PIN } from "./config.js";
 import { openDb, saveSubmission, listHistory, getSubmission, bumpDailyCount, getDailyCount, type DB } from "./db.js";
 import { tutor } from "./claude.js";
 import { resizeToBase64 } from "./images.js";
@@ -15,6 +15,7 @@ export interface ServerDeps {
   db: DB;
   tutorFn: (input: TutorInput) => Promise<TutorResult>;
   dailyCap: number;
+  pin?: string;
   now?: () => Date;
 }
 
@@ -24,10 +25,20 @@ function dayKey(d: Date): string {
 
 export function buildServer(deps: ServerDeps): FastifyInstance {
   const now = deps.now ?? (() => new Date());
+  const pin = deps.pin ?? "";
   const app = Fastify({ logger: false });
   app.register(multipart, { limits: { fileSize: 15 * 1024 * 1024 } });
 
   app.get("/api/profiles", async () => PROFILES);
+
+  app.get("/api/config", async () => ({ pinRequired: pin !== "" }));
+
+  app.post("/api/pin", async (req, reply) => {
+    if (pin === "") return { ok: true };
+    const body = (req.body ?? {}) as { pin?: string };
+    if (body.pin === pin) return { ok: true };
+    return reply.code(401).send({ ok: false, message: "Wrong PIN" });
+  });
 
   app.get("/api/history", async (req, reply) => {
     const profileId = (req.query as { profileId?: string }).profileId;
@@ -43,6 +54,10 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
   });
 
   app.post("/api/submit", async (req, reply) => {
+    if (pin !== "" && req.headers["x-hh-pin"] !== pin) {
+      return reply.code(401).send({ message: "Enter the family PIN" });
+    }
+
     const day = dayKey(now());
     if (getDailyCount(deps.db, day) >= deps.dailyCap) {
       return reply.code(429).send({ message: "That's enough homework help for today — try again tomorrow!" });
@@ -85,7 +100,7 @@ export function buildServer(deps: ServerDeps): FastifyInstance {
 async function start(): Promise<void> {
   assertNoApiKey(process.env);
   const db = openDb(DB_PATH);
-  const app = buildServer({ db, tutorFn: (i) => tutor(i), dailyCap: DAILY_SUBMISSION_CAP });
+  const app = buildServer({ db, tutorFn: (i) => tutor(i), dailyCap: DAILY_SUBMISSION_CAP, pin: PIN });
 
   const here = dirname(fileURLToPath(import.meta.url));
   const webDist = join(here, "..", "..", "web", "dist");

@@ -19,11 +19,11 @@ const result: TutorResult = {
   items: [{ id: "q1", questionText: "2+2", studentAnswer: "4", status: "correct", feedback: "Yes", hints: [], solution: null }],
 };
 
-function makeServer(opts: { cap?: number } = {}) {
+function makeServer(opts: { cap?: number; pin?: string } = {}) {
   const db = openDb(":memory:");
   const calls: unknown[] = [];
   const tutorFn = async (input: unknown) => { calls.push(input); return result; };
-  const app = buildServer({ db, tutorFn, dailyCap: opts.cap ?? 50, now: () => new Date("2026-06-13T10:00:00Z") });
+  const app = buildServer({ db, tutorFn, dailyCap: opts.cap ?? 50, pin: opts.pin, now: () => new Date("2026-06-13T10:00:00Z") });
   return { app, db, calls };
 }
 
@@ -130,5 +130,77 @@ describe("multipart submit", () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toMatch(/no image/i);
+  });
+});
+
+describe("pin gate", () => {
+  it("GET /api/config returns pinRequired:false when no pin is set", async () => {
+    const { app } = makeServer();
+    const res = await app.inject({ method: "GET", url: "/api/config" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ pinRequired: false });
+  });
+
+  it("POST /api/submit with no pin set allows requests without x-hh-pin header", async () => {
+    const { app } = makeServer();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit",
+      payload: { profileId: "jai", text: "2+2" },
+      headers: { "content-type": "application/json" },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("GET /api/config returns pinRequired:true when pin is set", async () => {
+    const { app } = makeServer({ pin: "1234" });
+    const res = await app.inject({ method: "GET", url: "/api/config" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ pinRequired: true });
+  });
+
+  it("POST /api/pin returns ok:true for correct pin", async () => {
+    const { app } = makeServer({ pin: "1234" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/pin",
+      payload: { pin: "1234" },
+      headers: { "content-type": "application/json" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+  });
+
+  it("POST /api/pin returns 401 for wrong pin", async () => {
+    const { app } = makeServer({ pin: "1234" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/pin",
+      payload: { pin: "9999" },
+      headers: { "content-type": "application/json" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("POST /api/submit with pin set returns 401 when x-hh-pin header is missing", async () => {
+    const { app } = makeServer({ pin: "1234" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit",
+      payload: { profileId: "jai", text: "2+2" },
+      headers: { "content-type": "application/json" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("POST /api/submit with pin set succeeds when correct x-hh-pin header is provided", async () => {
+    const { app } = makeServer({ pin: "1234" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/submit",
+      payload: { profileId: "jai", text: "2+2" },
+      headers: { "content-type": "application/json", "x-hh-pin": "1234" },
+    });
+    expect(res.statusCode).toBe(200);
   });
 });
