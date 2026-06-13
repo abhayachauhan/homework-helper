@@ -68,6 +68,7 @@ export const callModelOnce: QueryRunner = async ({ system, userText, image }) =>
       model: MODEL,
       systemPrompt: system,
       maxTurns: 1,
+      tools: [], // disable ALL built-in tools — this is a pure inference call, never an agentic one
       allowedTools: [],
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
