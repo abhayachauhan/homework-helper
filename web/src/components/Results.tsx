@@ -12,14 +12,15 @@ export function Results({
   onRetake: () => void;
   onNew: () => void;
 }) {
-  const toRevisit = result.items.filter((i) => i.status !== "correct").length;
+  const total = result.items.length;
+  const correct = result.items.filter((i) => i.status === "correct").length;
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
   return (
     <div className="screen">
-      <h2>{result.summary}</h2>
-      <p className="subtitle">
-        {result.items.length} question{result.items.length === 1 ? "" : "s"}
-        {toRevisit > 0 ? ` · ${toRevisit} to revisit` : " · all correct! 🎉"}
-      </p>
+      <h2 style={{ marginBottom: 4 }}>
+        You got {correct}/{total} right ({pct}%){pct === 100 ? " 🎉" : ""}
+      </h2>
+      {result.summary && <p className="subtitle">{result.summary}</p>}
 
       {result.items.map((item, i) => (
         <button key={item.id} className={`card ${item.status}`} type="button" onClick={() => onOpen(i)}>

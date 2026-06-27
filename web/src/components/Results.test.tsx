@@ -25,6 +25,13 @@ describe("Results", () => {
     expect(screen.getByText(/5\/6-1\/3/)).toBeInTheDocument();
   });
 
+  it("shows a one-line score heading with fraction and percentage", () => {
+    render(<Results result={result} onOpen={vi.fn()} onRetake={vi.fn()} onNew={vi.fn()} />);
+    const heading = screen.getByRole("heading");
+    expect(heading).toHaveTextContent("1/2"); // fixture: 1 correct of 2
+    expect(heading).toHaveTextContent("50%");
+  });
+
   it("opens an item when its card is tapped", async () => {
     const onOpen = vi.fn();
     render(<Results result={result} onOpen={onOpen} onRetake={vi.fn()} onNew={vi.fn()} />);
