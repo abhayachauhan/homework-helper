@@ -39,10 +39,10 @@ describe("Results", () => {
     expect(onRetake).toHaveBeenCalled();
   });
 
-  it("offers a 'start a new question' button", async () => {
+  it("offers a 'start again' button", async () => {
     const onNew = vi.fn();
     render(<Results result={result} onOpen={vi.fn()} onRetake={vi.fn()} onNew={onNew} />);
-    await userEvent.click(screen.getByRole("button", { name: /new question/i }));
+    await userEvent.click(screen.getByRole("button", { name: /start again/i }));
     expect(onNew).toHaveBeenCalled();
   });
 });

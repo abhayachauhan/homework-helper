@@ -14,7 +14,6 @@ export function ProblemDetail({ item, onBack, onNew }: { item: TutorItem; onBack
 
   return (
     <div className="screen">
-      <button className="btn-ghost" type="button" onClick={onBack}>← Back</button>
       <h2>{item.questionText}</h2>
       {item.studentAnswer && <p className="subtitle">Your answer: {item.studentAnswer}</p>}
 
@@ -100,8 +99,11 @@ export function ProblemDetail({ item, onBack, onNew }: { item: TutorItem; onBack
         </>
       )}
 
-      <button className="btn-primary" type="button" onClick={onNew} style={{ marginTop: 8 }}>
-        📸 Start a new question
+      <button className="btn-primary" type="button" onClick={onBack} style={{ marginTop: 8 }}>
+        ← Back to my questions
+      </button>
+      <button className="btn-ghost" type="button" onClick={onNew}>
+        📸 Start again (new worksheet)
       </button>
     </div>
   );

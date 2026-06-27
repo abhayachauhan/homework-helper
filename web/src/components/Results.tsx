@@ -34,7 +34,7 @@ export function Results({
       ))}
 
       <button className="btn-primary" type="button" onClick={onNew} style={{ marginTop: 8 }}>
-        📸 Start a new question
+        📸 Start again (new worksheet)
       </button>
       <button className="btn-ghost" type="button" onClick={onRetake}>
         Something look wrong? Retake / re-type

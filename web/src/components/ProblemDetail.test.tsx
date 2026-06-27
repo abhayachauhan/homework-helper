@@ -39,10 +39,17 @@ describe("ProblemDetail — correct item", () => {
     expect(screen.queryByRole("button", { name: /solve this one/i })).not.toBeInTheDocument();
   });
 
-  it("offers a 'start a new question' button", async () => {
+  it("makes 'back to my questions' the primary action (calls onBack)", async () => {
+    const onBack = vi.fn();
+    render(<ProblemDetail item={correct} onBack={onBack} onNew={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /back to my questions/i }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it("offers a secondary 'start again' button", async () => {
     const onNew = vi.fn();
     render(<ProblemDetail item={correct} onBack={vi.fn()} onNew={onNew} />);
-    await userEvent.click(screen.getByRole("button", { name: /new question/i }));
+    await userEvent.click(screen.getByRole("button", { name: /start again/i }));
     expect(onNew).toHaveBeenCalled();
   });
 });
