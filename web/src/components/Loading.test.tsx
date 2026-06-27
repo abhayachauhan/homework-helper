@@ -15,11 +15,15 @@ describe("Loading", () => {
     expect(later).toBeLessThanOrEqual(100);
   });
 
-  it("shows a fun joke/fact and rotates to a different one over time", () => {
+  it("keeps a joke/fact steady for ~10s, then rotates to a different one", () => {
     const { container } = render(<Loading />);
     const first = container.querySelector(".quip")?.textContent ?? "";
     expect(first.length).toBeGreaterThan(5);
+    // Still the same just before the 10s mark (no longer changes at 4s).
     act(() => { vi.advanceTimersByTime(4000); });
+    expect(container.querySelector(".quip")?.textContent).toBe(first);
+    // Rotates after the full 10s interval.
+    act(() => { vi.advanceTimersByTime(6000); });
     const second = container.querySelector(".quip")?.textContent ?? "";
     expect(second.length).toBeGreaterThan(5);
     expect(second).not.toBe(first);
